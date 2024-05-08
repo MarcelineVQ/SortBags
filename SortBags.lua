@@ -323,6 +323,7 @@ do
 				local item = Item(container, position)
 				if item then
 					local _, count = GetContainerItemInfo(container, position)
+					count = (count < 0) and 1 or count -- negatives count as 1
 					slot.item = item
 					slot.count = count
 					counts[item] = (counts[item] or 0) + count
