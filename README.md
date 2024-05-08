@@ -4,6 +4,8 @@ __IMPORTANT: Use this branch for classic: https://github.com/shirsig/SortBags/tr
 __IMPORTANT: The folder name must be "SortBags"__<br/>
 __IMPORTANT: If you want buttons then get this too: https://github.com/shirsig/Cleanup__
 
+* Compatable with SuperWoW
+
 ```
 /run SortBags() -- Sort bags
 /run SortBankBags() -- Sort bank
