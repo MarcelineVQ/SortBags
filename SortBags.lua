@@ -1,3 +1,33 @@
+function RandomizeBags()
+  local bagSlots = {}
+  local numBagSlots = 0
+
+  -- Gather all slots that contain items in your bags
+  for bag = 0, 4 do
+      local numSlots = GetContainerNumSlots(bag)
+      for slot = 1, numSlots do
+          -- if GetContainerItemLink(bag, slot) then
+              numBagSlots = numBagSlots + 1
+              table.insert(bagSlots, {bag = bag, slot = slot})
+          -- end
+      end
+  end
+
+  -- Shuffle the bag slots randomly
+  for i = numBagSlots, 2, -1 do
+      local j = math.random(1, i)
+      bagSlots[i], bagSlots[j] = bagSlots[j], bagSlots[i]
+  end
+
+  -- Swap items between the shuffled slots
+  for i = 1, numBagSlots - 1, 2 do
+      local slot1 = bagSlots[i]
+      local slot2 = bagSlots[i + 1]
+      PickupContainerItem(slot1.bag, slot1.slot)
+      PickupContainerItem(slot2.bag, slot2.slot)
+  end
+end
+
 local _G, _M = getfenv(0), {}
 setfenv(1, setmetatable(_M, {__index=_G}))
 
@@ -129,21 +159,32 @@ do
 		if f:IsShown() then return end
 		Initialize()
 		timeout = GetTime() + 7
+		f.last_lock_event = GetTime()
+		f:RegisterEvent("ITEM_LOCK_CHANGED")
 		f:Show()
 	end
 
+	f:SetScript("OnEvent", function ()
+		f.last_lock_event = GetTime()
+	end)
+
 	local delay = 0
 	f:SetScript('OnUpdate', function()
-		delay = delay - arg1
-		if delay <= 0 then
-			delay = 1.2
+		local now = GetTime()
+		if not f.last_lock_event then
+			return
+		end
 
+		if (now - f.last_lock_event) >= 0.1 then
 			local complete = Sort()
-			if complete or GetTime() > timeout then
+			if complete or now > timeout then
+				f:UnregisterEvent("ITEM_LOCK_CHANGED")
 				f:Hide()
 				return
 			end
 			Stack()
+			-- Reset last_lock_event so that updates will only occur after a new BAG_LOCK_UPDATE.
+			f.last_lock_event = nil
 		end
 	end)
 end
