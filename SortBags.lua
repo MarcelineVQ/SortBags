@@ -175,7 +175,9 @@ do
 			return
 		end
 
-		if (now - f.last_lock_event) >= 0.1 then
+		if (now - f.last_lock_event) >= 0.3 then
+			-- Reset last_lock_event so that updates will only occur after a new ITEM_LOCK_CHANGED
+			f.last_lock_event = nil
 			local complete = Sort()
 			if complete or now > timeout then
 				f:UnregisterEvent("ITEM_LOCK_CHANGED")
@@ -183,8 +185,6 @@ do
 				return
 			end
 			Stack()
-			-- Reset last_lock_event so that updates will only occur after a new BAG_LOCK_UPDATE.
-			f.last_lock_event = nil
 		end
 	end)
 end
