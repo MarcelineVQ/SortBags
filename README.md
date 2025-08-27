@@ -3,8 +3,9 @@ Bag sorting for Turtle WoW.<br/>
 __IMPORTANT: The folder name must be "SortBags"__<br/>
 __IMPORTANT: If you want buttons then get this too: https://github.com/shirsig/Cleanup__
 
-* Compatable with SuperWoW
-* Natively supported by pfUI
+* Compatable with SuperWoW.  
+* Natively supported by pfUI.  
+* Slightly faster than some versions due to reduced pausing.  
 
 ```
 /run SortBags() -- Sort bags
