@@ -33,6 +33,20 @@ setfenv(1, setmetatable(_M, {__index=_G}))
 
 CreateFrame('GameTooltip', 'SortBagsTooltip', nil, 'GameTooltipTemplate')
 
+local function IsSuperWoWLoaded()
+	-- https://github.com/balakethelock/SuperWoW/wiki/Features
+	return SetAutoloot ~= nil
+end
+
+local function GetContainerItemCount(container, position)
+	local _, countOrCharges = GetContainerItemInfo(container, position)
+	local count = countOrCharges
+	if IsSuperWoWLoaded() and countOrCharges < 0 then
+		count = 1
+	end
+	return count
+end
+
 local CONTAINERS
 
 function _G.SortBags()
@@ -149,45 +163,82 @@ local CLASSES = {
 
 local model, itemStacks, itemClasses, itemSortKeys
 
+function GetExpectedInventoryState()
+	local state = {}
+	for _, slot in model do
+		local key = slot.container .. ":" .. slot.position
+		state[key] = {
+			item = slot.item,
+			count = slot.count or 0
+		}
+	end
+	return state
+end
+
+function GetActualInventoryState()
+	local state = {}
+	for _, slot in model do
+		local key = slot.container .. ":" .. slot.position
+		local actualItem = Item(slot.container, slot.position)
+		local actualCount = 0
+		if actualItem then
+			local rawCount = GetContainerItemCount(slot.container, slot.position)
+			actualCount = (rawCount < 0) and 1 or rawCount
+		end
+		state[key] = {
+			item = actualItem,
+			count = actualCount
+		}
+	end
+	return state
+end
+
+function InventoryStateMatches(expected, actual)
+	for key, expectedSlot in expected do
+		local actualSlot = actual[key]
+		if not actualSlot or 
+		   expectedSlot.item ~= actualSlot.item or 
+		   expectedSlot.count ~= actualSlot.count then
+			return false
+		end
+	end
+	return true
+end
+
 do
 	local f = CreateFrame'Frame'
 	f:Hide()
 
 	local timeout
+	local expectedState, waitingForState = nil, false
 
 	function Start()
 		if f:IsShown() then return end
 		Initialize()
 		timeout = GetTime() + 7
-		f.last_lock_event = GetTime()
-		f:RegisterEvent("ITEM_LOCK_CHANGED")
-		f:RegisterEvent("BAG_UPDATE")
+		waitingForState = false
 		f:Show()
 	end
 
-	f:SetScript("OnEvent", function ()
-		f.last_lock_event = GetTime()
-	end)
-
-	local delay = 0
 	f:SetScript('OnUpdate', function()
-		local now = GetTime()
-		if not f.last_lock_event then
-			return
-		end
-
-		if (now - f.last_lock_event) >= 0.2 then
-			-- Reset last_lock_event so that updates will only occur after a new ITEM_LOCK_CHANGED
-			f.last_lock_event = nil
-			local complete = Sort()
-			if complete or now > timeout then
-				f:UnregisterEvent("ITEM_LOCK_CHANGED")
-				f:UnregisterEvent("BAG_UPDATE")
-				f:Hide()
+		if waitingForState then
+			local actualState = GetActualInventoryState()
+			if not InventoryStateMatches(expectedState, actualState) then
 				return
 			end
-			Stack()
+			waitingForState = false
 		end
+		
+		local complete = Sort()
+		if complete or GetTime() > timeout then
+			f:Hide()
+			return
+		end
+		
+		Stack()
+		
+		expectedState = GetExpectedInventoryState()
+		waitingForState = true
 	end)
 end
 
@@ -365,8 +416,7 @@ do
 				local slot = {container=container, position=position, class=class}
 				local item = Item(container, position)
 				if item then
-					local _, count = GetContainerItemInfo(container, position)
-					count = (count < 0) and 1 or count -- negatives count as 1
+					local count = GetContainerItemCount(container, position)
 					slot.item = item
 					slot.count = count
 					counts[item] = (counts[item] or 0) + count
