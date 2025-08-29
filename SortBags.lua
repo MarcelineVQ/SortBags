@@ -31,6 +31,7 @@ end
 local _G, _M = getfenv(0), {}
 setfenv(1, setmetatable(_M, {__index=_G}))
 
+
 CreateFrame('GameTooltip', 'SortBagsTooltip', nil, 'GameTooltipTemplate')
 
 local function IsSuperWoWLoaded()
@@ -168,7 +169,7 @@ function GetExpectedInventoryState()
 	for _, slot in model do
 		local key = slot.container .. ":" .. slot.position
 		state[key] = {
-			item = slot.item,
+			item = slot.link,
 			count = slot.count or 0
 		}
 	end
@@ -179,7 +180,7 @@ function GetActualInventoryState()
 	local state = {}
 	for _, slot in model do
 		local key = slot.container .. ":" .. slot.position
-		local actualItem = Item(slot.container, slot.position)
+		local actualItem = GetContainerItemLink(slot.container, slot.position)
 		local actualCount = 0
 		if actualItem then
 			local rawCount = GetContainerItemCount(slot.container, slot.position)
@@ -293,9 +294,11 @@ function Move(src, dst)
 			dst.count = dst.count + count
 			if src.count == 0 then
 				src.item = nil
+				src.link = nil
 			end
 		else
 			src.item, dst.item = dst.item, src.item
+			src.link, dst.link = dst.link, src.link
 			src.count, dst.count = dst.count, src.count
 		end
 
@@ -414,10 +417,12 @@ do
 			local class = ContainerClass(container)
 			for position = 1, GetContainerNumSlots(container) do
 				local slot = {container=container, position=position, class=class}
+				local link = GetContainerItemLink(container, position)
 				local item = Item(container, position)
 				if item then
 					local count = GetContainerItemCount(container, position)
 					slot.item = item
+					slot.link = link
 					slot.count = count
 					counts[item] = (counts[item] or 0) + count
 				end
